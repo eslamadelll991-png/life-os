@@ -1,9 +1,80 @@
+elif menu == "🕌 الدين، الصلوات، ورادار المعاصي":
+    st.title("🕌 محرك الدين، الصلاة، وتزكية النفس")
+    
+    tab_daily, tab_qadaa, tab_plan, tab_ramadan, tab_sin, tab_reports = st.tabs([
+        "📝 السجل اليومي", "🔄 الصلوات الفائتة", "🗓️ الخطة الأسبوعية", "🌙 رمضان", "🛡️ رادار المعاصي", "📊 التقارير"
+    ])
+    
+    # ---------------------------------------------------------
+    # 📝 السجل اليومي (صلوات، أذكار، قرآن، قيام)
+    # ---------------------------------------------------------
+    with tab_daily:
+        st.subheader(f"سجل الطاعات ليوم: {TODAY_DATE}")
+        
+        with st.form("spiritual_daily_form"):
+            st.markdown("**1️⃣ الصلوات الخمس:**")
+            col1, col2, col3, col4, col5 = st.columns(5)
+            options = ["مسجد 🕌", "بيت 🏠", "فائتة ❌"]
+            with col1: fajr = st.radio("الفجر", options, index=0)
+            with col2: dhuhr = st.radio("الظهر", options, index=1)
+            with col3: asr = st.radio("العصر", options, index=0)
+            with col4: maghrib = st.radio("المغرب", options, index=0)
+            with col5: isha = st.radio("العشاء", options, index=0)
+            
+            st.markdown("---")
+            st.markdown("**2️⃣ الأذكار وقيام الليل:**")
+            col_z1, col_z2, col_q = st.columns(3)
+            with col_z1: azkar_m = st.checkbox("أذكار الصباح ☀️")
+            with col_z2: azkar_e = st.checkbox("أذكار المساء 🌙")
+            with col_q: qiyam = st.number_input("عدد ركعات قيام الليل:", min_value=0, step=2, value=0)
+            
+            st.markdown("---")
+            st.markdown("**3️⃣ القرآن الكريم والدروس:**")
+            col_q1, col_q2, col_q3 = st.columns(3)
+            with col_q1:
+                q_read = st.number_input("عدد صفحات القراءة (الورد):", min_value=0, value=0)
+                q_lesson = st.checkbox("أخذت درس قرآن / تجويد اليوم")
+            with col_q2:
+                surah = st.text_input("اسم السورة (للحفظ/المراجعة):")
+                q_mem = st.number_input("عدد الصفحات المحفوظة:", min_value=0, value=0)
+            with col_q3:
+                st.write("المراجعة:")
+                rev_start = st.number_input("من صفحة:", min_value=0, value=0)
+                rev_end = st.number_input("إلى صفحة:", min_value=0, value=0)
+
+            if st.form_submit_button("💾 حفظ سجل الطاعات اليومي", use_container_width=True):
+                if supabase:
+                    try:
+                        data = {
+                            "log_date": TODAY_DATE,
+                            "fajr": fajr, "dhuhr": dhuhr, "asr": asr, "maghrib": maghrib, "isha": isha,
+                            "azkar_morning": azkar_m, "azkar_evening": azkar_e, "qiyam_rakaat": qiyam,
+                            "quran_read_pages": q_read, "quran_lesson": q_lesson,
+                            "surah_name": surah, "quran_memorized_pages": q_mem,
+                            "quran_rev_start": rev_start, "quran_rev_end": rev_end
+                        }
+                        supabase.table("spiritual_daily_logs").upsert(data, on_conflict="log_date").execute()
+                        st.success("✅ تقبل الله! تم حفظ سجل طاعاتك اليوم بنجاح.")
+                    except Exception as ex:
+                        st.error(f"خطأ في الحفظ: {ex}")
+
+    # ---------------------------------------------------------
+    # 🔄 الصلوات الفائتة (قضاء الصلاة)
+    # ---------------------------------------------------------
+    with tab_qadaa:
+        st.subheader("🔄 سجل الصلوات الفائتة (القضاء)")
+        st.write("تابع عدد الصلوات التي قمت بقضائها. كلما صليت فرضاً فائتاً، أضفه هنا ليتم حسابه في إجمالي الرصيد المقضي.")
+        
+        totals = {"fajr": 0, "dhuhr": 0, "asr": 0, "maghrib": 0, "isha": 0}
+        if supabase:
+            try:
+                res = supabase.table("qadaa_totals").select("*").eq("id", 1).execute()
+                if res.data:
                     t = res.data[0]
                     totals = {"fajr": t.get("fajr_total",0), "dhuhr": t.get("dhuhr_total",0), "asr": t.get("asr_total",0), "maghrib": t.get("maghrib_total",0), "isha": t.get("isha_total",0)}
-            except:
+            except Exception:
                 pass
                 
-        # عرض الإجماليات الحالية
         c1, c2, c3, c4, c5 = st.columns(5)
         with c1: st.markdown(f"<div class='qadaa-box'><div class='qadaa-title'>الفجر</div><div class='qadaa-count'>{totals['fajr']}</div></div>", unsafe_allow_html=True)
         with c2: st.markdown(f"<div class='qadaa-box'><div class='qadaa-title'>الظهر</div><div class='qadaa-count'>{totals['dhuhr']}</div></div>", unsafe_allow_html=True)
@@ -43,7 +114,7 @@
     # ---------------------------------------------------------
     with tab_plan:
         st.subheader("🗓️ الخطة الأسبوعية (قرآن، دروس، وقيام)")
-        st.write("اكتب خطتك لأيام الأسبوع بالكامل هنا لتكون مرجعك اليومي (متى تحفظ، متى تراجع، متى الدرس).")
+        st.write("اكتب خطتك لأيام الأسبوع بالكامل هنا لتكون مرجعك اليومي.")
         
         current_plan = ""
         if supabase:
@@ -51,15 +122,12 @@
                 res = supabase.table("spiritual_weekly_plan").select("plan_text").eq("id", 1).execute()
                 if res.data:
                     current_plan = res.data[0].get("plan_text", "")
-            except:
+            except Exception:
                 pass
                 
         with st.form("plan_form"):
             plan_input = st.text_area("خطتك الأسبوعية المخصصة:", value=current_plan, height=250, 
-                                      placeholder="مثال:
-السبت: حفظ 3 صفحات بعد الفجر + درس تجويد بعد العصر.
-الأحد: مراجعة سورة البقرة + 4 ركعات قيام...
-الخ")
+                                      placeholder="السبت: حفظ 3 صفحات بعد الفجر + درس تجويد بعد العصر...")
             if st.form_submit_button("💾 حفظ الخطة الأسبوعية"):
                 if supabase:
                     try:
@@ -73,7 +141,6 @@
     # ---------------------------------------------------------
     with tab_ramadan:
         st.subheader("🌙 وضع شهر رمضان المبارك")
-        st.write("توثيق خاص بشهر رمضان: الصيام، التراويح، والقيام.")
         with st.form("ramadan_form", clear_on_submit=True):
             fasted = st.radio("هل صمت اليوم؟", ["نعم 🌙", "لا (عذر شرعي / مرض) ❌"])
             r_col1, r_col2 = st.columns(2)
@@ -101,8 +168,7 @@
     # 🛡️ رادار المعاصي
     # ---------------------------------------------------------
     with tab_sin:
-        st.subheader("🛡️ رادار تحليل أسباب المعاصي والزلات (Root-Cause Analyzer)")
-        st.write("إذا وقعت في ذنب، سجله مع السبب الجذري الذي قادك إليه لتحليل الثغرات وغلقها نهائياً.")
+        st.subheader("🛡️ رادار تحليل أسباب المعاصي والزلات")
         with st.form("sin_form", clear_on_submit=True):
             sin_title = st.text_input("المعصية / الزلة التي وقعت فيها:")
             root_why = st.selectbox("السبب الجذري الحقيقي الذي أوصلك لها:", ["السهر المفرط 🌙", "الفراغ والملل ⏳", "الخلوة بالهاتف والإنترنت 📱", "الابتعاد عن الصحبة الصالحة 👥", "الغضب والتوتر ⚡", "سبب آخر"])
@@ -123,8 +189,7 @@
     # 📊 تقارير الدين
     # ---------------------------------------------------------
     with tab_reports:
-        st.subheader("📊 تقارير الأداء الديني (أسبوعي / شهري)")
-        
+        st.subheader("📊 تقارير الأداء الديني")
         if supabase:
             try:
                 res = supabase.table("spiritual_daily_logs").select("*").execute()
@@ -138,7 +203,6 @@
                     period_df = df.loc[mask]
                     
                     if not period_df.empty:
-                        # إحصائيات سريعة
                         total_quran = period_df['quran_read_pages'].sum()
                         total_qiyam = period_df['qiyam_rakaat'].sum()
                         azkar_m_count = period_df['azkar_morning'].sum()
@@ -149,7 +213,6 @@
                         with col3: st.markdown(f'<div class="glass-card"><div class="metric-label">أيام الالتزام بأذكار الصباح</div><div class="metric-value">{azkar_m_count}</div></div>', unsafe_allow_html=True)
                         
                         st.markdown("**معدل أداء الصلوات في المسجد:**")
-                        # تجميع أماكن الصلاة
                         prayers = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']
                         mosque_counts = sum((period_df[p] == 'مسجد 🕌').sum() for p in prayers)
                         home_counts = sum((period_df[p] == 'بيت 🏠').sum() for p in prayers)
@@ -172,7 +235,7 @@
 # ==========================================
 elif menu == "🧠 النفسية، العادات، وخزنة القراءة":
     st.title("🧠 محرك النفسية، إدارة العادات، وخزنة القراءة")
-    st.info("هذا القسم يعمل بكامل التطويرات التي أنجزناها سابقاً (التقارير، الامتنان، والعادات المرنة). اختر قسم الدين لتجربة التحديثات الجديدة.")
+    st.info("هذا القسم يعمل بكامل التطويرات التي أنجزناها سابقاً. اختر قسم الدين لتجربة التحديثات الجديدة.")
 
 # ==========================================
 # 4. معرض الفن
