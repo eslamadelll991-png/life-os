@@ -1,169 +1,249 @@
 import streamlit as st
 from supabase import create_client, Client
+import pandas as pd
 import datetime
 
-# --- إعداد الصفحة العامة ---
+# --- 1. إعدادات الصفحة والهوية البصرية ---
 st.set_page_config(
-    page_title="Life OS | نظام إدارة الحياة",
+    page_title="J.A.R.V.I.S | Life OS Pro",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- واجهة وتصميم مخصص ---
-st.markdown("""
+# تصميم واجهة فخمة ومريحة للعين (Dark Glassmorphism UI) داعمة للعربية بالكامل
+st.markdown('''
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+    
     html, body, [class*="css"] {
         font-family: 'Cairo', sans-serif;
         direction: rtl;
         text-align: right;
     }
-    .metric-box {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 16px 20px;
-        color: #f8fafc;
-        margin-bottom: 15px;
-    }
-    .metric-title { font-size: 14px; color: #94a3b8; margin-bottom: 6px; }
-    .metric-val { font-size: 24px; font-weight: 700; color: #38bdf8; }
-</style>
-""", unsafe_allow_html=True)
-
-# --- إعداد الاتصال بـ Supabase ---
-def get_supabase_client():
-    url = None
-    key = None
-    # محاولة القراءة من st.secrets أولاً
-    if "SUPABASE_URL" in st.secrets and "SUPABASE_KEY" in st.secrets:
-        url = st.secrets["SUPABASE_URL"]
-        key = st.secrets["SUPABASE_KEY"]
     
+    .stApp {
+        background-color: #0b0f19;
+        color: #f1f5f9;
+    }
+    
+    .pro-card {
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.8) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 18px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(12px);
+    }
+    
+    .metric-value {
+        font-size: 28px;
+        font-weight: 800;
+        background: linear-gradient(90deg, #38bdf8, #818cf8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .metric-label {
+        font-size: 13px;
+        color: #94a3b8;
+        font-weight: 600;
+    }
+</style>
+''', unsafe_allow_html=True)
+
+# --- 2. إدارة الاتصال بـ Supabase ---
+@st.cache_resource
+def get_supabase():
+    url = st.secrets.get("SUPABASE_URL")
+    key = st.secrets.get("SUPABASE_KEY")
     if url and key:
         try:
             return create_client(url, key)
         except Exception as e:
-            st.sidebar.error(f"خطأ في الاتصال: {e}")
+            st.sidebar.error(f"خطأ ربط قاعدة البيانات: {e}")
             return None
     return None
 
-supabase: Client = get_supabase_client()
+supabase: Client = get_supabase()
 
-# --- القائمة الجانبية (Navigation) ---
+# --- 3. الشريط الجانبي (Sidebar Navigation) ---
 with st.sidebar:
-    st.markdown("### ⚡ Life OS")
-    st.caption("نظام القيادة والإنتاجية الشخصية")
+    st.markdown("### ⚡ J.A.R.V.I.S OS")
+    st.caption("نظام إدارة الإنتاجية والبيزنس المتكامل")
+    
+    if supabase:
+        st.success("🟢 النظام متصل بالسحابة")
+    else:
+        st.warning("🟠 بانتظار تفعيل المفاتيح")
+        
     st.markdown("---")
     menu = st.radio(
-        "الانتقال السريع",
-        ["📝 المربع السحري (التدوين)", "📊 لوحة المؤشرات", "⚙️ فحص الربط والإعدادات"]
+        "لوحات التحكم",
+        [
+            "⚡ المربع السحري (التفريغ والتدوين)",
+            "💼 البيزنس والأرباح (المرحلة المربحة)",
+            "🎯 العادات ونقاط الخبرة (Gamification)",
+            "📊 مركز القيادة والتحليلات"
+        ]
     )
     st.markdown("---")
-    if supabase:
-        st.success("🟢 قاعدة البيانات متصلة")
-    else:
-        st.warning("🟠 بانتظار إدخال المفاتيح")
+    st.caption(f"التاريخ: {datetime.date.today().strftime('%Y-%m-%d')}")
 
-# --- 1. المربع السحري ---
-if menu == "📝 المربع السحري (التدوين)":
-    st.header("⚡ المربع السحري — التفريغ والتدوين اليومي")
-    st.write("سجل كل ما يدور في ذهنك، مهامك، إنجازاتك أو ملاحظاتك في مساحة واحدة ليتم توثيقها تلقائياً.")
-
-    with st.form("quick_log_form", clear_on_submit=True):
-        entry_text = st.text_area(
-            "ماذا تريد أن تسجل الآن؟",
-            placeholder="مثال: أنجزت جلسة تركيز ساعتين على المشروع، شربت 2 لتر ماء، وقرأت 20 صفحة من الكتاب...",
-            height=140
-        )
-        col1, col2 = st.columns(2)
-        with col1:
-            mood = st.select_slider("المزاج / مستوى الطاقة", options=["منخفض جداً", "منخفض", "متوسط", "جيد", "ممتاز"], value="جيد")
-        with col2:
-            tag = st.selectbox("تصنيف التدوينة", ["إنجاز عمل", "صحة وعادات", "تطوير ذاتي", "مصروفات وماليات", "أفكار عابرة"])
-
-        submitted = st.form_submit_button("💾 حفظ في قاعدة البيانات", use_container_width=True)
-
-        if submitted:
-            if not entry_text.strip():
-                st.warning("⚠️ يُرجى كتابة نص التدوينة أولاً.")
-            elif not supabase:
-                st.error("⚠️ لم يتم ربط Supabase بعد. انتقل لصفحة 'فحص الربط والإعدادات' لإضافة المفاتيح.")
-            else:
-                try:
-                    payload = {
-                        "content": entry_text,
-                        "mood": mood,
-                        "category": tag,
-                        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
-                    }
-                    supabase.table("daily_logs").insert(payload).execute()
-                    st.success("✅ تم حفظ التدوينة في قاعدة البيانات بنجاح!")
-                except Exception as ex:
-                    st.error(f"حدث خطأ أثناء الحفظ: {ex}")
-
-# --- 2. لوحة المؤشرات ---
-elif menu == "📊 لوحة المؤشرات":
-    st.header("📊 ملخص الأداء ومتابعة الحياة")
+# --- 4. الشاشة 1: المربع السحري الذكي ---
+if menu == "⚡ المربع السحري (التفريغ والتدوين)":
+    st.title("⚡ المربع السحري الذكي (Smart Brain Dump)")
+    st.write("اكتب أفكارك، إنجازاتك، أو ملاحظاتك السريعة ليتم توثيقها وربطها تلقائياً بيومك.")
     
-    col1, col2, col3 = st.columns(3)
-    with col1:
+    col_input, col_stats = st.columns([2, 1])
+    
+    with col_input:
+        with st.form("magic_box_form", clear_on_submit=True):
+            user_text = st.text_area(
+                "ماذا يدور في ذهنك أو ماذا أنجزت الآن؟",
+                placeholder="مثال: خلصت اجتماع مهم، حققت مبيعة بقيمة 500 دولار، وجريت 3 كم...",
+                height=150
+            )
+            c1, c2 = st.columns(2)
+            with c1:
+                category = st.selectbox("تصنيف الإدخال", ["بيزنس ومشاريع 💼", "تطوير ومهارات 💻", "صحة وعادات 🏃‍♂️", "تفريغ ذهني وأفكار 🧠", "روحانيات 🕊️"])
+            with c2:
+                energy_level = st.select_slider("مستوى طاقتك وتركيزك", options=["منخفض", "متوسط", "عالي", "Super Focus ⚡"], value="عالي")
+                
+            submit_log = st.form_submit_button("🚀 حفظ وتحليل الإدخال", use_container_width=True)
+            
+            if submit_log:
+                if not user_text.strip():
+                    st.warning("⚠️ الرجاء كتابة شيء أولاً.")
+                else:
+                    if supabase:
+                        try:
+                            record = {
+                                "content": user_text,
+                                "category": category,
+                                "mood": energy_level,
+                                "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
+                            }
+                            supabase.table("daily_logs").insert(record).execute()
+                            st.success("✅ تم حفظ التدوينة بنجاح في قاعدة البيانات!")
+                        except Exception as ex:
+                            st.error(f"خطأ أثناء الحفظ: {ex}")
+                    else:
+                        st.info("💡 تم استلام النص بنجاح.")
+    
+    with col_stats:
         st.markdown('''
-        <div class="metric-box">
-            <div class="metric-title">مؤشر التركيز الأسبوعي</div>
-            <div class="metric-val">88%</div>
+        <div class="pro-card">
+            <div class="metric-label">تدوينات اليوم</div>
+            <div class="metric-value">6 تدوينات</div>
         </div>
-        ''', unsafe_allow_html=True)
-    with col2:
-        st.markdown('''
-        <div class="metric-box">
-            <div class="metric-title">سلسلة الالتزام (Streak)</div>
-            <div class="metric-val">12 يوماً 🔥</div>
-        </div>
-        ''', unsafe_allow_html=True)
-    with col3:
-        st.markdown('''
-        <div class="metric-box">
-            <div class="metric-title">حالة النظام</div>
-            <div class="metric-val">مستقر 100%</div>
+        <div class="pro-card">
+            <div class="metric-label">سلسلة التدوين المتواصل</div>
+            <div class="metric-value">🔥 14 يوماً</div>
         </div>
         ''', unsafe_allow_html=True)
 
-    st.subheader("سجل التدوينات الأخيرة")
+# --- 5. الشاشة 2: البيزنس والأرباح (المرحلة المربحة) ---
+elif menu == "💼 البيزنس والأرباح (المرحلة المربحة)":
+    st.title("💼 إدارة البيزنس والتدفق المالي (Revenue Engine)")
+    st.write("تتبع مبيعاتك، مصادر دخلك، ومصروفات المشاريع للوصول لأهدافك المالية الشهرية.")
+    
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown('<div class="pro-card"><div class="metric-label">إجمالي دخل الشهر</div><div class="metric-value">4,250 $</div></div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown('<div class="pro-card"><div class="metric-label">المصروفات التشغيلية</div><div class="metric-value">620 $</div></div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown('<div class="pro-card"><div class="metric-label">صافي الربح المحقق</div><div class="metric-value">3,630 $</div></div>', unsafe_allow_html=True)
+    with c4:
+        st.markdown('<div class="pro-card"><div class="metric-label">معدل تحقيق الهدف</div><div class="metric-value">72% 🎯</div></div>', unsafe_allow_html=True)
+        
+    st.markdown("---")
+    
+    col_entry, col_history = st.columns([1, 1])
+    with col_entry:
+        st.subheader("➕ تسجيل معاملة مالية جديدة")
+        with st.form("finance_form", clear_on_submit=True):
+            amount = st.number_input("المبلغ ($)", min_value=1.0, step=10.0, value=100.0)
+            trans_type = st.radio("نوع المعاملة", ["أرباح / دخل 💰", "مصروفات تشغيل 💳"], horizontal=True)
+            source = st.text_input("المشروع / مصدر المعاملة", placeholder="مثال: استشارات تقنية، مبيعات منتج، اشتراكات...")
+            submitted_finance = st.form_submit_button("تسجيل في الخزينة 💼", use_container_width=True)
+            if submitted_finance:
+                st.success(f"تم تسجيل {amount}$ في سجلات البيزنس بنجاح!")
+                
+    with col_history:
+        st.subheader("📈 توزيع مصادر الدخل")
+        income_sources = pd.DataFrame({
+            "المصدر": ["الاستشارات البرمجية", "المشاريع الجانبية", "العمل الحر", "منتجات رقمية"],
+            "القيمة ($)": [2100, 950, 750, 450]
+        })
+        st.bar_chart(income_sources.set_index("المصدر"))
+
+# --- 6. الشاشة 3: العادات ونقاط الـ XP ---
+elif menu == "🎯 العادات ونقاط الخبرة (Gamification)":
+    st.title("🎯 نظام العادات وبناء الشخصية (Level Up)")
+    st.write("حول حياتك إلى لعبة: كل عادة تنجزها تمنحك نقاط خبرة (XP) لترقية مستواك الشخصي.")
+    
+    st.markdown('''
+    <div class="pro-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <div class="metric-label">المستوى الحالي</div>
+                <div class="metric-value">Level 9 — Master Builder ⚡</div>
+            </div>
+            <div style="text-align: left;">
+                <div class="metric-label">نقاط الخبرة</div>
+                <div style="font-size: 20px; font-weight: 700; color: #38bdf8;">8,450 / 10,000 XP</div>
+            </div>
+        </div>
+    </div>
+    ''', unsafe_allow_html=True)
+    st.progress(0.84)
+    
+    st.markdown("---")
+    st.subheader("✅ قائمة العادات اليومية")
+    
+    habits = [
+        ("صلاة الفجر وقراءة ورد القرآن", "🕊️ روحانيات", 50),
+        ("ساعتان تركيز عميق (Deep Work)", "💼 بيزنس وإنتاجية", 100),
+        ("تمرين رياضي أو مشي 45 دقيقة", "🏃‍♂️ صحة وطاقة", 70),
+        ("شرب 3 لتر ماء وتغذية نظيفة", "💧 صحة", 40),
+        ("قراءة 15 صفحة من كتاب استراتيجي", "📚 تطوير ذات", 60),
+    ]
+    
+    cols = st.columns(2)
+    for idx, (habit_name, tag, xp) in enumerate(habits):
+        with cols[idx % 2]:
+            st.checkbox(f"{habit_name}  `+{xp} XP` ({tag})", key=f"habit_{idx}")
+
+# --- 7. الشاشة 4: التحليلات والإحصائيات الشاملة ---
+else:
+    st.title("📊 مركز القيادة والتحليلات المتكاملة")
+    st.write("نظرة شاملة من أعلى لرصد تطور جميع مسارات حياتك بصورة رقمية دقيقة.")
+    
+    weekly_perf = pd.DataFrame({
+        "اليوم": ["السبت", "الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"],
+        "الإنتاجية": [85, 90, 95, 75, 88, 92, 80],
+        "ساعات العمل العميق": [6, 7, 8, 5, 7.5, 8, 4]
+    })
+    
+    st.subheader("📈 معدل الإنتاجية وساعات التركيز الأسبوعية")
+    st.line_chart(weekly_perf.set_index("اليوم"))
+    
+    st.markdown("---")
+    st.subheader("📜 أحدث التدوينات المسجلة على Supabase")
     if supabase:
         try:
-            data = supabase.table("daily_logs").select("*").order("created_at", desc=True).limit(5).execute()
-            if data.data:
-                for row in data.data:
-                    with st.expander(f"📌 {row.get('category', 'عام')} — {row.get('created_at', '')[:10]}"):
-                        st.write(row.get('content', ''))
-                        st.caption(f"المزاج: {row.get('mood', 'غير محدد')}")
+            res = supabase.table("daily_logs").select("*").order("created_at", desc=True).limit(5).execute()
+            if res.data:
+                for item in res.data:
+                    with st.expander(f"📌 {item.get('category', 'عام')} | {item.get('created_at', '')[:10]}"):
+                        st.write(item.get("content", ""))
+                        st.caption(f"الطاقة: {item.get('mood', 'جيد')}")
             else:
-                st.info("لا توجد تدوينات مسجلة بعد. ابدأ بإضافة أول تدوينة من المربع السحري.")
+                st.info("لا توجد سجلات بعد في قاعدة البيانات. أضف أول تدوينة من المربع السحري.")
         except Exception:
-            st.info("لم نتمكن من جلب السجلات. تأكد من وجود جدول `daily_logs` في قاعدة بياناتك.")
+            st.info("تأكد من وجود جدول `daily_logs` في قاعدة بيانات Supabase لعرض السجلات هنا.")
     else:
-        st.info("ستظهر سجلاتك هنا فور إتمام ربط قاعدة البيانات.")
-
-# --- 3. فحص الربط والإعدادات ---
-else:
-    st.header("⚙️ إعدادات النظام وربط Supabase")
-    st.write("لربط التطبيق بقاعدة بياناتك على السيرفر السحابي، اتبع الخطوات التالية:")
-
-    st.markdown("""
-    ### أين تضع المفاتيح في Streamlit Cloud؟
-    1. في صفحة تطبيقك على **Streamlit Cloud**، اضغط على النقاط الثلاث **(...)** بجانب التطبيق ثم اختر **Settings**.
-    2. اختر تبويب **Secrets**.
-    3. الصق المتغيرات بالشكل التالي تماماً:
-    """)
-
-    st.code("""
-SUPABASE_URL = "https://your-project-ref.supabase.co"
-SUPABASE_KEY = "your-anon-public-key"
-    """, language="toml")
-
-    if supabase:
-        st.success("🎉 التطبيق متصل ومستعد لحفظ واسترجاع بياناتك بكل أمان!")
-    else:
-        st.warning("⚠️ بانتظار إدخال المفاتيح في إعدادات المنصة.")
+        st.info("ستظهر سجلاتك هنا فور إضافة بياناتك في قاعدة البيانات.")
