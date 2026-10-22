@@ -145,14 +145,13 @@ if menu == "🏛️ مركز القيادة الأم (Master Dashboard)":
     st.title("🏛️ مركز القيادة والتحكم العام (Master Dashboard)")
     st.write("ملخص حي متكامل يربط بين حالتك النفسية، الدينية، الجسدية، والمهنية في شاشة واحدة.")
     
-    # شبكة بينتو (Bento Grid) للمؤشرات الأساسية
     b1, b2, b3, b4 = st.columns(4)
     with b1:
         st.markdown('<div class="glass-card"><div class="metric-label">مؤشر أداء اليوم</div><div class="metric-value">91% 🌟</div></div>', unsafe_allow_html=True)
     with b2:
         st.markdown('<div class="glass-card"><div class="metric-label">صلوات اليوم في المسجد</div><div class="metric-value">4 / 5 🕌</div></div>', unsafe_allow_html=True)
     with b3:
-        st.markdown('<div class="glass-card"><div class="metric-label">سلسلة الالتزام (Streak)</div><div class="metric-value">🔥 14 يوماً</div></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><div class="metric-label">أطول سلسلة التزام (Streak)</div><div class="metric-value">🔥 متصل</div></div>', unsafe_allow_html=True)
     with b4:
         st.markdown('<div class="glass-card"><div class="metric-label">التزام الجيم والتغذية</div><div class="metric-value">منضبط ✅</div></div>', unsafe_allow_html=True)
         
@@ -181,8 +180,11 @@ if menu == "🏛️ مركز القيادة الأم (Master Dashboard)":
 elif menu == "🧠 النفسية، العادات، وخزنة القراءة":
     st.title("🧠 محرك النفسية، إدارة العادات، وخزنة القراءة")
     
-    tab_dump, tab_habits, tab_reading = st.tabs(["⚡ الـ 10 سطور الصباحية ومحلل المشاعر", "🎯 مدير العادات المرن", "📚 مكتبة وخزنة القراءة"])
+    tab_dump, tab_habits, tab_reading = st.tabs(["⚡ الـ 10 سطور الصباحية", "🎯 مدير العادات المرن", "📚 مكتبة وخزنة القراءة"])
     
+    # ---------------------------------------------------------
+    # الـ 10 سطور
+    # ---------------------------------------------------------
     with tab_dump:
         st.subheader("📝 الـ 10 سطور الصباحية (Morning Dump)")
         st.write("ابدأ يومك بتفريغ كامل لذهنك: كيف استيقظت، ما الذي تشعر به، وما الذي تركز عليه اليوم.")
@@ -207,40 +209,127 @@ elif menu == "🧠 النفسية، العادات، وخزنة القراءة":
                     except Exception as ex:
                         st.error(f"خطأ: {ex}")
                         
+    # ---------------------------------------------------------
+    # مدير العادات المرن (الديناميكي)
+    # ---------------------------------------------------------
     with tab_habits:
         st.subheader("🎯 مدير العادات المرن (Elastic Habits)")
-        c_h1, c_h2 = st.columns([2, 1])
-        with c_h1:
-            st.checkbox("الاستيقاظ المبكر وتفريغ الصباح (Streak: 12 يوماً)")
-            st.checkbox("الورد القرآني اليومي (Streak: 20 يوماً)")
-            st.checkbox("تمرين الجيم (Streak: 5 أيام)")
-            st.checkbox("عدم متابعة مشتتات السوشيال ميديا (Streak: 8 أيام)")
-        with c_h2:
-            st.markdown('<div class="glass-card"><div class="metric-label">أطول سلسلة التزام</div><div class="metric-value">🔥 24 يوماً</div></div>', unsafe_allow_html=True)
-            
+        st.write("أضف أي عادة أو نشاط جديد (لعب شطرنج، لودو، قراءة، تمرين)، وسيقوم النظام بحفظها وتتبعها لك.")
+        
+        # 1. إضافة عادة جديدة
+        with st.form("add_new_habit"):
+            col_hn, col_hc, col_btn = st.columns([2, 1, 1])
+            with col_hn:
+                new_habit = st.text_input("➕ أضف نشاط أو عادة جديدة:")
+            with col_hc:
+                habit_cat = st.selectbox("التصنيف:", ["ترفيه وهوايات 🎮", "تطوير ومهارات 💻", "صحة 🏃‍♂️", "روحانيات 🕊️"])
+            with col_btn:
+                st.markdown("<br>", unsafe_allow_html=True)
+                submitted_habit = st.form_submit_button("إضافة العادة")
+                
+            if submitted_habit:
+                if new_habit.strip() and supabase:
+                    try:
+                        supabase.table("elastic_habits").insert({
+                            "habit_name": new_habit,
+                            "category": habit_cat,
+                            "streak_count": 0
+                        }).execute()
+                        st.success(f"تمت إضافة '{new_habit}' بنجاح!")
+                        st.rerun()
+                    except Exception as ex:
+                        st.error(f"خطأ: {ex}")
+
+        st.markdown("---")
+        
+        # 2. عرض العادات من قاعدة البيانات وتحديث الـ Streaks
+        if supabase:
+            habits_res = supabase.table("elastic_habits").select("*").eq("is_active", True).execute()
+            if habits_res.data:
+                st.write("✅ **عاداتك ونشاطاتك المسجلة (حدد ما أنجزته اليوم لزيادة الـ Streak):**")
+                
+                with st.form("log_habits"):
+                    cols = st.columns(2)
+                    checkboxes = {}
+                    for idx, h in enumerate(habits_res.data):
+                        c = cols[idx % 2]
+                        # اسم العادة مع عرض المتتالية
+                        label = f"{h['habit_name']} (Streak: {h['streak_count']} 🔥)"
+                        checkboxes[h['id']] = c.checkbox(label, key=f"hab_{h['id']}")
+                        
+                    if st.form_submit_button("🚀 تأكيد الإنجاز وتحديث النقاط", use_container_width=True):
+                        for h_id, is_checked in checkboxes.items():
+                            if is_checked:
+                                # زيادة الستريك 1
+                                curr_streak = next(item['streak_count'] for item in habits_res.data if item['id'] == h_id)
+                                supabase.table("elastic_habits").update({"streak_count": curr_streak + 1}).eq("id", h_id).execute()
+                        st.success("تم تحديث سلاسل الالتزام (Streaks) لعاداتك اليوم بنجاح!")
+                        st.rerun()
+            else:
+                st.info("لا توجد عادات مسجلة حالياً. استخدم المربع بالأعلى لإضافة عادتك الأولى (مثل: لعب شطرنج).")
+
+    # ---------------------------------------------------------
+    # مكتبة الكتب وخزنة الملخصات
+    # ---------------------------------------------------------
     with tab_reading:
-        st.subheader("📚 مكتبة الكتب وخزنة الملخصات")
+        st.subheader("📚 إضافة وتحديث كتاب")
         with st.form("book_form"):
             b_title = st.text_input("اسم الكتاب:")
             c_p1, c_p2 = st.columns(2)
             with c_p1:
-                cur_page = st.number_input("الصفحة الحالية:", min_value=0, value=45)
+                cur_page = st.number_input("الصفحة الحالية التي وصلت إليها:", min_value=0, value=0)
             with c_p2:
-                tot_page = st.number_input("إجمالي الصفحات:", min_value=1, value=250)
-            b_summary = st.text_area("خزنة ملخص الكتاب والفوائد الرئيسية:")
-            if st.form_submit_button("حفظ تقدم القراءة 📖"):
+                tot_page = st.number_input("إجمالي عدد صفحات الكتاب:", min_value=1, value=100)
+            b_summary = st.text_area("خزنة ملخص الكتاب أو الفوائد الرئيسية التي خرجت بها:")
+            
+            if st.form_submit_button("حفظ الكتاب في المكتبة 📖"):
                 if supabase and b_title.strip():
                     try:
-                        supabase.table("reading_vault").insert({
+                        # التحقق مما إذا كان الكتاب موجود مسبقاً للتحديث أو الإضافة
+                        existing = supabase.table("reading_vault").select("id").eq("book_title", b_title).execute()
+                        data_to_save = {
                             "book_title": b_title,
                             "current_page": cur_page,
                             "total_pages": tot_page,
                             "summary_notes": b_summary,
                             "is_finished": cur_page >= tot_page
-                        }).execute()
-                        st.success("✅ تم حفظ تقدم الكتاب في الخزنة!")
+                        }
+                        if existing.data:
+                            # تحديث
+                            supabase.table("reading_vault").update(data_to_save).eq("book_title", b_title).execute()
+                        else:
+                            # إضافة جديدة
+                            supabase.table("reading_vault").insert(data_to_save).execute()
+                            
+                        st.success("✅ تم حفظ الكتاب وتقدمك بنجاح!")
+                        st.rerun()
                     except Exception as ex:
                         st.error(f"خطأ: {ex}")
+                        
+        st.markdown("---")
+        st.subheader("🏛️ مكتبتك الخاصة (سجل الكتب والملخصات)")
+        
+        # جلب جميع الكتب وعرضها
+        if supabase:
+            books_res = supabase.table("reading_vault").select("*").order("created_at", desc=True).execute()
+            if books_res.data:
+                for b in books_res.data:
+                    is_done = b.get('is_finished', False)
+                    status_text = "✅ مكتمل" if is_done else f"⏳ قيد القراءة ({b.get('current_page')}/{b.get('total_pages')})"
+                    
+                    with st.expander(f"📖 {b.get('book_title')} — {status_text}"):
+                        # شريط التقدم
+                        progress_val = min(1.0, b.get('current_page', 0) / b.get('total_pages', 1))
+                        st.progress(progress_val)
+                        
+                        st.markdown("**الملخص والفوائد المحفوظة:**")
+                        summary = b.get('summary_notes')
+                        if summary:
+                            st.write(summary)
+                        else:
+                            st.caption("لا يوجد ملخص مسجل لهذا الكتاب بعد.")
+            else:
+                st.info("مكتبتك فارغة. أضف أول كتاب لتبدأ في بناء خزنتك المعرفية!")
 
 # ==========================================
 # 3. قسم معرض الرسومات الفنية (Cloudinary)
