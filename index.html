@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- إعدادات تطبيق الآيفون (PWA) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JARVIS">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <title>J.A.R.V.I.S Life OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            background-image: radial-gradient(circle at top right, #1e293b, #0f172a);
+            min-height: 100vh;
+            -webkit-user-select: none;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .magic-input:focus-within {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.3);
+            border-color: #10b981;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 max-w-4xl mx-auto">
+
+    <!-- شريط القيادة العلوي -->
+    <header class="glass-panel p-4 mb-6 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <div class="bg-blue-600 p-3 rounded-full shadow-[0_0_15px_#2563eb]">
+                <i class="fa-solid fa-infinity text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-black tracking-wider text-green-400">J.A.R.V.I.S OS</h1>
+                <p class="text-xs text-gray-400" id="currentDate">جارِ التحميل...</p>
+            </div>
+        </div>
+        <div class="flex gap-4">
+            <div class="text-center w-20">
+                <p class="text-xs text-gray-400">طاقة (HP)</p>
+                <div class="w-full bg-gray-800 rounded-full h-2.5 mt-1">
+                    <div id="hp-bar" class="bg-green-500 h-full rounded-full shadow-[0_0_10px_#22c55e] transition-all" style="width: 100%;"></div>
+                </div>
+            </div>
+            <div class="text-center w-20">
+                <p class="text-xs text-gray-400">خبرة (XP)</p>
+                <div class="w-full bg-gray-800 rounded-full h-2.5 mt-1">
+                    <div id="xp-bar" class="bg-blue-500 h-full rounded-full shadow-[0_0_10px_#3b82f6] transition-all" style="width: 30%;"></div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- المربع السحري -->
+    <section class="mb-8">
+        <div class="glass-panel p-4 magic-input border border-gray-700 relative">
+            <div class="flex items-center gap-2 mb-2 text-sm text-green-400 font-bold">
+                <i class="fa-solid fa-robot animate-pulse"></i>
+                <span>المربع السحري الذكي (أدخل تفاصيل يومك، مذاكرتك، أو مصروفاتك...)</span>
+            </div>
+            <textarea id="userInput" rows="3" class="w-full bg-transparent text-white p-3 outline-none resize-none text-base placeholder-gray-500" placeholder="مثال: ذاكرت ساعتين برمجة، وصرفت 100 جنيه شاورما، وصليت العصر..."></textarea>
+            
+            <button id="sendBtn" onclick="sendMagicData()" class="absolute bottom-4 left-4 bg-green-600 hover:bg-green-500 text-white rounded-xl p-3 px-6 text-sm font-bold shadow-[0_0_15px_rgba(22,163,74,0.5)] transition">
+                <i class="fa-solid fa-paper-plane mr-2"></i> تحليل وحفظ
+            </button>
+        </div>
+        <div id="loading" class="hidden text-center mt-3 text-xs text-gray-400 animate-pulse">
+            <i class="fa-solid fa-microchip fa-spin text-green-400"></i> جاري الاتصال بالخادم وقاعدة البيانات...
+        </div>
+    </section>
+
+    <!-- شبكة الأقسام الأربعة -->
+    <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="glass-panel p-5">
+            <h3 class="text-gray-400 text-sm mb-2"><i class="fa-solid fa-brain text-purple-400"></i> الصحة النفسية والعادات</h3>
+            <p class="text-2xl font-bold" id="mental-status">جاهز للتحليل</p>
+        </div>
+        <div class="glass-panel p-5">
+            <h3 class="text-gray-400 text-sm mb-2"><i class="fa-solid fa-wallet text-red-400"></i> المالية والمصروفات</h3>
+            <p class="text-2xl font-bold text-red-400" id="expense-total">0 EGP</p>
+        </div>
+        <div class="glass-panel p-5">
+            <h3 class="text-gray-400 text-sm mb-2"><i class="fa-solid fa-dumbbell text-blue-400"></i> الجيم والجسد</h3>
+            <p class="text-lg font-bold" id="gym-status">لم يتم التسجيل</p>
+        </div>
+        <div class="glass-panel p-5">
+            <h3 class="text-gray-400 text-sm mb-2"><i class="fa-solid fa-mosque text-yellow-400"></i> الدين والروحانيات</h3>
+            <p class="text-lg font-bold" id="spiritual-status">في انتظار الصلاة</p>
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('currentDate').innerText = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        async function sendMagicData() {
+            const text = document.getElementById('userInput').value;
+            if(!text.trim()) return;
+
+            const sendBtn = document.getElementById('sendBtn');
+            const loading = document.getElementById('loading');
+            
+            sendBtn.disabled = true;
+            loading.classList.remove('hidden');
+
+            try {
+                // إرسال البيانات لسيرفر البايثون (FastAPI)
+                const response = await fetch('/api/process-magic', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_text: text })
+                });
+
+                const result = await response.json();
+                if(result.success) {
+                    document.getElementById('mental-status').innerText = "تم الحفظ في قاعدة البيانات!";
+                    document.getElementById('userInput').value = '';
+                } else {
+                    alert("حدث خطأ أثناء الحفظ.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("تعذر الاتصال بالخادم.");
+            } finally {
+                sendBtn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
